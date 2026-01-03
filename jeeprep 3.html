@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Tracker 2027</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            /* This URL pulls a new "Study" image every day automatically */
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://source.unsplash.com/featured/1920x1080?study,library,nature,workspace/daily'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            min-height: 100vh;
+            margin: 0;
+            transition: background 1s ease-in-out;
+        }
+        
+        .countdown-header {
+            background: rgba(20, 30, 48, 0.9);
+            backdrop-filter: blur(10px);
+            color: #f1c40f;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .days-num { 
+            font-size: 3.5rem; 
+            font-weight: 900; 
+            display: block; 
+            color: #ffffff;
+        }
+
+        .main-layout { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 950px; }
+
+        .timer-card { 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 2.5rem; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
+            text-align: center; 
+        }
+
+        .timer-display { 
+            font-size: 5.5rem; 
+            font-weight: bold; 
+            margin: 15px 0; 
+            color: #1a2a6c; 
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -2px;
+        }
+        
+        .controls button { padding: 15px 30px; font-size: 1.1rem; cursor: pointer; border: none; border-radius: 10px; margin: 5px; transition: 0.3s; font-weight: bold; }
+        .start { background: #27ae60; color: white; }
+        .start:hover { background: #2ecc71; transform: translateY(-2px); }
+        .stop { background: #e74c3c; color: white; }
+        .stop:hover { background: #ff4757; transform: translateY(-2px); }
+        .reset { background: #7f8c8d; color: white; }
+
+        .log-section { 
+            background: rgba(255, 255, 255, 0.98); 
+            padding: 2rem; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
+            overflow-x: auto; 
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; min-width: 650px; }
+        th, td { text-align: left; padding: 15px; border-bottom: 1px solid #eee; }
+        th { color: #7f8c8d; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 2px solid #f1c40f; }
+        
+        .note-cell { 
+            color: #2c3e50; 
+            font-style: italic; 
+            background: #fdfaf0; 
+            border: 1px dashed #d1d1d1; 
+            cursor: text; 
+            min-width: 250px; 
+            padding: 12px; 
+            border-radius: 8px; 
+        }
+        .note-cell:focus { outline: 2px solid #f1c40f; background: white; border-style: solid; }
+        .time-cell { font-weight: bold; color: #2980b9; font-family: 'Courier New', monospace; font-size: 1.1rem; }
+        .timestamp-cell { font-size: 0.85rem; color: #636e72; }
+        .delete-btn { color: #fab1a0; cursor: pointer; border: none; background: none; font-size: 1.5rem; transition: 0.2s; }
+        
+        .summary-row { background: #1a2a6c; color: white; font-weight: bold; }
+        .summary-row td { padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="countdown-header">
+        <span class="days-num" id="daysCount">---</span>
+        <h2 style="margin:5px 0 0 0; font-weight: 400; letter-spacing: 1px;">Days Remaining for JEE Mains 2027</h2>
+        <small style="color: rgba(255,255,255,0.6)">(Target Date: 22 January 2027)</small>
+    </div>
+
+    <div class="main-layout">
+        <div class="timer-card">
+            <div class="timer-display" id="display">00:00:00</div>
+            <div class="controls">
+                <button class="start" id="startBtn" onclick="startTimer()">Start Study</button>
+                <button class="stop" id="stopBtn" onclick="stopTimer()" disabled>Finish & Log</button>
+                <button class="reset" onclick="resetTimer()">Reset</button>
+            </div>
+        </div>
+
+        <div class="log-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin:0; color: #1a2a6c;">Your Study Progress</h3>
+                <button onclick="clearAll()" style="font-size: 0.7rem; color: #b2bec3; cursor: pointer; background: none; border: 1px solid #dfe6e9; padding: 5px 10px; border-radius: 5px;">Clear Data</button>
+            </div>
+            <table id="studyTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Session Times</th>
+                        <th>Duration</th>
+                        <th>What I have done in this session</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="logBody"></tbody>
+                <tfoot>
+                    <tr class="summary-row">
+                        <td colspan="2" style="text-align: right; border-radius: 0 0 0 15px;">TOTAL PREPARATION TIME:</td>
+                        <td id="grandTotal" class="time-cell" style="color: #f1c40f;">00:00:00</td>
+                        <td colspan="2" style="border-radius: 0 0 15px 0;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- Countdown to Jan 22, 2027 ---
+        function updateCountdown() {
+            const targetDate = new Date("January 22, 2027 00:00:00").getTime();
+            const now = new Date().getTime();
+            const difference = targetDate - now;
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            document.getElementById("daysCount").innerText = days > 0 ? days : 0;
+        }
+        updateCountdown();
+
+        // --- Timer Formatting ---
+        function formatMsToTime(ms) {
+            let hh = Math.floor(ms / 3600000);
+            let mm = Math.floor((ms % 3600000) / 60000);
+            let ss = Math.floor((ms % 60000) / 1000);
+            return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}`;
+        }
+
+        let startTime, elapsedTime = 0, timerInterval;
+        let sessionStartClockTime;
+
+        function startTimer() {
+            sessionStartClockTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            startTime = Date.now() - elapsedTime;
+            timerInterval = setInterval(() => {
+                elapsedTime = Date.now() - startTime;
+                document.getElementById("display").innerHTML = formatMsToTime(elapsedTime);
+            }, 1000);
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = false;
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            const sessionEndClockTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            let note = prompt("Summarize this session:", "Practiced JEE Problems");
+            
+            if (note !== null) {
+                saveSession(elapsedTime, note, sessionStartClockTime, sessionEndClockTime);
+            }
+            
+            elapsedTime = 0;
+            document.getElementById("display").innerHTML = "00:00:00";
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = true;
+        }
+
+        function resetTimer() {
+            if(confirm("Are you sure you want to reset the current timer?")) {
+                clearInterval(timerInterval);
+                elapsedTime = 0;
+                document.getElementById("display").innerHTML = "00:00:00";
+                document.getElementById("startBtn").disabled = false;
+                document.getElementById("stopBtn").disabled = true;
+            }
+        }
+
+        function saveSession(ms, note, start, end) {
+            const session = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('en-GB'),
+                startTime: start,
+                endTime: end,
+                durationMs: ms,
+                note: note
+            };
+            let history = JSON.parse(localStorage.getItem("jee_2027_v1") || "[]");
+            history.unshift(session);
+            localStorage.setItem("jee_2027_v1", JSON.stringify(history));
+            renderTable();
+        }
+
+        function updateNote(id, newNote) {
+            let history = JSON.parse(localStorage.getItem("jee_2027_v1") || "[]");
+            let item = history.find(h => h.id === id);
+            if(item) item.note = newNote;
+            localStorage.setItem("jee_2027_v1", JSON.stringify(history));
+        }
+
+        function deleteSession(id) {
+            if(confirm("Delete this entry?")) {
+                let history = JSON.parse(localStorage.getItem("jee_2027_v1") || "[]");
+                history = history.filter(h => h.id !== id);
+                localStorage.setItem("jee_2027_v1", JSON.stringify(history));
+                renderTable();
+            }
+        }
+
+        function renderTable() {
+            const history = JSON.parse(localStorage.getItem("jee_2027_v1") || "[]");
+            const logBody = document.getElementById("logBody");
+            let totalMs = 0;
+            logBody.innerHTML = "";
+            
+            history.forEach(item => {
+                totalMs += item.durationMs;
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="timestamp-cell">${item.date}</td>
+                    <td class="timestamp-cell"><b>${item.startTime}</b> - <b>${item.endTime}</b></td>
+                    <td class="time-cell">${formatMsToTime(item.durationMs)}</td>
+                    <td class="note-cell" contenteditable="true" onblur="updateNote(${item.id}, this.innerText)">${item.note}</td>
+                    <td><button class="delete-btn" onclick="deleteSession(${item.id})" title="Delete">&times;</button></td>
+                `;
+                logBody.appendChild(row);
+            });
+            document.getElementById("grandTotal").innerText = formatMsToTime(totalMs);
+        }
+
+        function clearAll() {
+            if(confirm("This will permanently delete ALL study history. Proceed?")) {
+                localStorage.removeItem("jee_2027_v1");
+                renderTable();
+            }
+        }
+
+        window.onload = renderTable;
+    </script>
+</body>
+</html>

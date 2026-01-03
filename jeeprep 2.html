@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Tracker - Editable Recaps</title>
+    <style>
+        :root {
+            --physics: #3498db; --chemistry: #e67e22; --maths: #9b59b6; --dark-navy: #1a2a6c; --success: #27ae60;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), 
+                        url('https://images.unsplash.com/featured/daily?study,workspace,library,books'); 
+            background-size: cover; background-position: center; background-attachment: fixed;
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px; min-height: 100vh; margin: 0; color: #333;
+        }
+        
+        .countdown-header {
+            background: rgba(20, 30, 48, 0.95); backdrop-filter: blur(15px);
+            color: #f1c40f; width: 100%; max-width: 800px; text-align: center; 
+            padding: 20px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+        }
+
+        .main-layout { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1000px; }
+
+        .timer-card { 
+            background: rgba(255, 255, 255, 0.98); padding: 2rem; border-radius: 20px; 
+            box-shadow: 0 10px 35px rgba(0,0,0,0.4); text-align: center; 
+        }
+
+        .timer-display { font-size: 5rem; font-weight: bold; margin: 10px 0; color: var(--dark-navy); font-variant-numeric: tabular-nums; }
+
+        .sub-btn {
+            padding: 10px 20px; border-radius: 30px; border: 2px solid #ddd;
+            background: white; cursor: pointer; font-weight: bold; transition: 0.3s; margin: 0 5px;
+        }
+        .sub-btn.active[data-sub="Physics"] { background: var(--physics); color: white; border-color: var(--physics); }
+        .sub-btn.active[data-sub="Chemistry"] { background: var(--chemistry); color: white; border-color: var(--chemistry); }
+        .sub-btn.active[data-sub="Maths"] { background: var(--maths); color: white; border-color: var(--maths); }
+
+        .chapter-select { padding: 12px; width: 320px; border-radius: 8px; border: 2px solid #eee; font-size: 1rem; margin-top: 15px; }
+
+        .controls button { padding: 12px 30px; font-size: 1rem; cursor: pointer; border: none; border-radius: 10px; margin: 10px 5px; font-weight: bold; }
+        .start { background: var(--success); color: white; }
+        .stop { background: #e74c3c; color: white; }
+
+        #recapContainer { display: none; margin-top: 20px; animation: fadeIn 0.5s; }
+        .recap-input { width: 90%; max-width: 500px; height: 60px; padding: 10px; border-radius: 8px; border: 2px solid #ddd; font-family: inherit; margin-bottom: 10px; }
+
+        .log-section { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 35px rgba(0,0,0,0.4); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        
+        /* Editable Recap Cell */
+        .editable-recap { 
+            cursor: pointer; 
+            padding: 5px; 
+            border-radius: 4px; 
+            transition: background 0.2s;
+            border: 1px dashed transparent;
+            font-style: italic;
+            color: #555;
+        }
+        .editable-recap:hover { background: #f0f7ff; border-color: #3498db; }
+
+        .total-row { background: var(--dark-navy); color: white; font-weight: bold; }
+        .total-row td { padding: 15px 12px; }
+        .grand-time { color: #f1c40f; font-size: 1.2rem; font-family: monospace; }
+
+        #chapterModal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 30px; border-radius: 20px; box-shadow: 0 0 100px rgba(0,0,0,0.5); z-index: 100; width: 95%; max-width: 500px;
+        }
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 99; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="countdown-header">
+        <span style="font-size: 3rem; font-weight: 900;" id="daysCount">---</span>
+        <div style="font-weight: bold; letter-spacing: 1px;">DAYS TO JEE 2027</div>
+    </div>
+
+    <div class="main-layout">
+        <div class="timer-card">
+            <div id="subButtons">
+                <button class="sub-btn active" data-sub="Physics" onclick="setSubject('Physics')">Physics</button>
+                <button class="sub-btn" data-sub="Chemistry" onclick="setSubject('Chemistry')">Chemistry</button>
+                <button class="sub-btn" data-sub="Maths" onclick="setSubject('Maths')">Maths</button>
+            </div>
+
+            <select id="chapterDropdown" class="chapter-select"></select>
+            <div style="margin-top: 10px;">
+                <a href="javascript:void(0)" onclick="openChapterModal()" style="font-size: 0.85rem; color: var(--dark-navy); font-weight: bold;">Edit Syllabus & Numbers</a>
+            </div>
+
+            <div class="timer-display" id="display">00:00:00</div>
+            
+            <div id="recapContainer">
+                <p style="font-weight: bold; margin-bottom: 5px;">What did you do in this session?</p>
+                <textarea id="sessionRecap" class="recap-input" placeholder="e.g. Completed module 1, Practiced 10 PYQs..."></textarea>
+                <br>
+                <button onclick="saveSession()" style="background: var(--dark-navy); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">Log Session</button>
+            </div>
+
+            <div class="controls" id="timerControls">
+                <button class="start" id="startBtn" onclick="startTimer()">Start Session</button>
+                <button class="stop" id="stopBtn" onclick="finishTimer()" disabled>Finish Session</button>
+            </div>
+        </div>
+
+        <div class="log-section">
+            <h3 style="margin:0 0 5px 0; color: var(--dark-navy);">Study History</h3>
+            <p style="font-size: 0.75rem; color: #666; margin-bottom: 15px;">(Click on a recap text to edit it)</p>
+            <table id="studyTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Subject</th>
+                        <th>Chapter</th>
+                        <th>Duration</th>
+                        <th>Session Recap (Editable)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="logBody"></tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right; border-radius: 10px 0 0 10px;">GRAND TOTAL:</td>
+                        <td id="grandTotalDisplay" class="grand-time">00:00:00</td>
+                        <td id="sessionCountDisplay" style="font-size: 0.7rem; color: #bdc3c7;">0 Sessions</td>
+                        <td style="border-radius: 0 10px 10px 0;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="overlay" onclick="closeChapterModal()"></div>
+    <div id="chapterModal">
+        <h3>Manage Syllabus</h3>
+        <div id="chapterList" style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;"></div>
+        <div style="display:grid; grid-template-columns: 60px 1fr 70px; gap: 5px;">
+            <input type="number" id="newChNum" placeholder="No.">
+            <input type="text" id="newChName" placeholder="Chapter Name">
+            <button onclick="addNewChapter()" style="background: var(--success); color: white; border: none; border-radius: 5px;">Add</button>
+        </div>
+        <button onclick="closeChapterModal()" style="width: 100%; padding: 12px; margin-top: 15px; background: var(--dark-navy); color: white; border: none; border-radius: 8px;">Close</button>
+    </div>
+
+    <script>
+        let currentSubject = 'Physics';
+        let chapterData = JSON.parse(localStorage.getItem("jee_chapters_v11")) || {
+            Physics: [{num: 1, name: "Units & Dimensions", completed: false}],
+            Chemistry: [{num: 1, name: "Mole Concept", completed: false}],
+            Maths: [{num: 1, name: "Sets", completed: false}]
+        };
+
+        function getSortedChapters(sub) {
+            return [...chapterData[sub]].sort((a, b) => (a.completed - b.completed) || (a.num - b.num));
+        }
+
+        function setSubject(sub) {
+            currentSubject = sub;
+            document.querySelectorAll('.sub-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-sub') === sub));
+            updateChapterDropdown();
+        }
+
+        function updateChapterDropdown() {
+            const dropdown = document.getElementById("chapterDropdown");
+            dropdown.innerHTML = getSortedChapters(currentSubject).map(ch => 
+                `<option value="${ch.name}">${ch.completed ? '✅' : '⏳'} Ch ${ch.num}: ${ch.name}</option>`
+            ).join('');
+        }
+
+        function openChapterModal() {
+            document.getElementById("overlay").style.display = "block";
+            document.getElementById("chapterModal").style.display = "block";
+            renderModalList();
+        }
+
+        function renderModalList() {
+            const list = document.getElementById("chapterList");
+            list.innerHTML = getSortedChapters(currentSubject).map((ch) => `
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
+                    <span><input type="checkbox" ${ch.completed ? 'checked' : ''} onchange="toggleComplete('${ch.name}')"> <b>${ch.num}.</b> ${ch.name}</span>
+                    <button onclick="deleteChapter('${ch.name}')" style="color:red; border:none; background:none; cursor:pointer;">&times;</button>
+                </div>`).join('');
+        }
+
+        function toggleComplete(chName) {
+            const chapter = chapterData[currentSubject].find(c => c.name === chName);
+            if(chapter) chapter.completed = !chapter.completed;
+            saveData(); renderModalList(); updateChapterDropdown(); renderHistory();
+        }
+
+        function addNewChapter() {
+            const num = document.getElementById("newChNum").value;
+            const name = document.getElementById("newChName").value;
+            if (num && name.trim()) {
+                chapterData[currentSubject].push({ num: parseInt(num), name: name.trim(), completed: false });
+                document.getElementById("newChNum").value = ""; document.getElementById("newChName").value = "";
+                saveData(); renderModalList(); updateChapterDropdown();
+            }
+        }
+
+        function deleteChapter(chName) {
+            chapterData[currentSubject] = chapterData[currentSubject].filter(c => c.name !== chName);
+            saveData(); renderModalList(); updateChapterDropdown();
+        }
+
+        function saveData() { localStorage.setItem("jee_chapters_v11", JSON.stringify(chapterData)); }
+        function closeChapterModal() { document.getElementById("overlay").style.display = "none"; document.getElementById("chapterModal").style.display = "none"; }
+
+        // Timer Logic
+        let startTime, elapsedTime = 0, timerInterval;
+        function startTimer() {
+            startTime = Date.now() - elapsedTime;
+            timerInterval = setInterval(() => {
+                elapsedTime = Date.now() - startTime;
+                document.getElementById("display").innerText = formatTime(elapsedTime);
+            }, 1000);
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = false;
+        }
+
+        function finishTimer() {
+            clearInterval(timerInterval);
+            document.getElementById("timerControls").style.display = "none";
+            document.getElementById("recapContainer").style.display = "block";
+        }
+
+        function saveSession() {
+            const recapText = document.getElementById("sessionRecap").value || "No recap provided";
+            const session = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('en-GB'),
+                sub: currentSubject,
+                chName: document.getElementById("chapterDropdown").value,
+                dur: elapsedTime,
+                recap: recapText
+            };
+            let history = JSON.parse(localStorage.getItem("jee_history_v11") || "[]");
+            history.unshift(session);
+            localStorage.setItem("jee_history_v11", JSON.stringify(history));
+            
+            elapsedTime = 0;
+            document.getElementById("display").innerText = "00:00:00";
+            document.getElementById("sessionRecap").value = "";
+            document.getElementById("recapContainer").style.display = "none";
+            document.getElementById("timerControls").style.display = "block";
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = true;
+            renderHistory();
+        }
+
+        // Inline Editing Function
+        function updateRecap(id, newText) {
+            let history = JSON.parse(localStorage.getItem("jee_history_v11") || "[]");
+            const index = history.findIndex(item => item.id === id);
+            if (index !== -1) {
+                history[index].recap = newText;
+                localStorage.setItem("jee_history_v11", JSON.stringify(history));
+                renderHistory();
+            }
+        }
+
+        function formatTime(ms) {
+            let h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem("jee_history_v11") || "[]");
+            const body = document.getElementById("logBody");
+            let grandTotalMs = 0;
+            
+            body.innerHTML = history.map(item => {
+                grandTotalMs += item.dur;
+                const isComp = chapterData[item.sub].find(c => c.name === item.chName)?.completed;
+                return `
+                <tr>
+                    <td>${item.date}</td>
+                    <td><b style="color:var(--${item.sub.toLowerCase()})">${item.sub}</b></td>
+                    <td>${isComp ? '✅' : '⏳'} ${item.chName}</td>
+                    <td style="font-family:monospace">${formatTime(item.dur)}</td>
+                    <td>
+                        <div class="editable-recap" contenteditable="true" 
+                             onblur="updateRecap(${item.id}, this.innerText)"
+                             onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">
+                             ${item.recap}
+                        </div>
+                    </td>
+                    <td><button onclick="deleteSession(${item.id})" style="border:none; background:none; cursor:pointer; color:#fab1a0;">&times;</button></td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById("grandTotalDisplay").innerText = formatTime(grandTotalMs);
+            document.getElementById("sessionCountDisplay").innerText = `${history.length} Sessions Total`;
+        }
+
+        function deleteSession(id) {
+            if(confirm("Delete this log?")) {
+                let history = JSON.parse(localStorage.getItem("jee_history_v11") || "[]").filter(h => h.id !== id);
+                localStorage.setItem("jee_history_v11", JSON.stringify(history));
+                renderHistory();
+            }
+        }
+
+        function updateCountdown() {
+            const diff = new Date("January 22, 2027").getTime() - new Date().getTime();
+            document.getElementById("daysCount").innerText = Math.max(0, Math.floor(diff / 86400000));
+        }
+
+        window.onload = () => { updateCountdown(); updateChapterDropdown(); renderHistory(); };
+    </script>
+</body>
+</html>
